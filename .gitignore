@@ -205,3 +205,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+data/results/corpus_canciones_nltk.csv
+data/results/corpus_canciones_nltk1.csv
+data/results/corpus_canciones_spacy.csv
