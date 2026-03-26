@@ -2,6 +2,15 @@
 dashboard/pages/beto.py
 =======================
 Página: Análisis BERT (bert-base-uncased)
+
+Cambios respecto a la versión original:
+  - BetoService ahora se importa desde src.services.embeddings_beto
+    (adaptador que usa el backend real CargadorBETO / embedding_cls / AnalizadorMLM)
+  - _get_bert_embeddings() lee los vectores beto_cls directamente de MongoDB
+    (columna embeddings_beto_cls del DataFrame de consultar_base_datos)
+    en lugar de cargar un archivo .npy externo.
+  - Se corrige el bug: antes llamaba a embeddings_word2vec() en lugar
+    de embeddings_beto().
 """
 
 import sys
@@ -22,24 +31,65 @@ from dashboard.db import get_corpus_df, get_generos, PROJECT_ROOT
 
 register_page(__name__, path="/beto", name="BERT")
 
-# ── Carga embeddings pre-calculados ─────────────────────────────────────────
-def _get_bert_embeddings():
-    path = PROJECT_ROOT / "data" / "results" / "bert_corpus_embeddings.npy"
-    if path.exists():
-        return np.load(str(path))
-    return None
+# ── Helper: hex (#RRGGBB) → rgba(r,g,b,alpha) ────────────────────────────────
+def _hex_to_rgba(hex_color: str, alpha: float = 0.25) -> str:
+    hex_color = hex_color.lstrip("#")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
+# ── Cache ────────────────────────────────────────────────────────────────────
+_bert_cache: dict = {}
+
+
+def _get_bert_embeddings() -> np.ndarray:
+    """
+    Lee los embeddings BERT CLS directamente de MongoDB.
+    Retorna np.ndarray (n, 768) o None si no hay vectores.
+    Bugfix: antes llamaba a embeddings_word2vec() — ahora usa embeddings_beto_cls.
+    """
+    df = get_corpus_df()
+    if df.empty or "embeddings_beto_cls" not in df.columns:
+        return None
+
+    mask = df["embeddings_beto_cls"].apply(
+        lambda v: isinstance(v, (list, np.ndarray)) and len(v) > 0
+    )
+    if not mask.any():
+        return None
+
+    try:
+        return np.array(df.loc[mask, "embeddings_beto_cls"].tolist())
+    except Exception:
+        return None
 
 
 def _get_bert_service():
+    """
+    Carga BetoService en memoria (singleton en _bert_cache).
+    Usa el adaptador src/services/embeddings_beto.py que delega
+    al backend real (CargadorBETO, AnalizadorMLM, etc.).
+    """
+    if "svc" in _bert_cache:
+        return _bert_cache["svc"]
+
     src_path = str(PROJECT_ROOT / "src")
     if src_path not in sys.path:
         sys.path.insert(0, src_path)
+
     try:
-        from services.embeddings_beto import BetoService
-        svc = BetoService(model_name="bert-base-uncased", batch_size=32, max_length=128)
+        # ← nuevo import: adaptador que usa el backend real
+        from src.services.embeddings_beto import BetoService
+        svc = BetoService(model_name="bert-base-uncased", batch_size=16, max_length=128)
         svc.load_model()
+        _bert_cache["svc"] = svc
         return svc
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error("No se pudo cargar BetoService: %s", e)
+        _bert_cache["svc"] = None
         return None
 
 
@@ -114,10 +164,13 @@ layout = html.Div([
                 section_header("Plantillas por género",
                                "Predefinidas para explorar diferencias semánticas"),
                 html.Div([
-                    html.Button(template[:45] + "…", id={"type": "bert-template-btn", "index": i},
-                                className="btn-secondary",
-                                style={"marginBottom": "6px", "width": "100%",
-                                       "textAlign": "left", "fontSize": "11px"})
+                    html.Button(
+                        template[:45] + "…",
+                        id={"type": "bert-template-btn", "index": i},
+                        className="btn-secondary",
+                        style={"marginBottom": "6px", "width": "100%",
+                               "textAlign": "left", "fontSize": "11px"},
+                    )
                     for i, template in enumerate([
                         "Hip hop always talks about [MASK] and street life.",
                         "Pop music is full of [MASK] and dancing.",
@@ -159,7 +212,7 @@ layout = html.Div([
         html.Div([
             card([
                 section_header("t-SNE — Embeddings BERT",
-                               "Proyección 2D del espacio semántico contextual"),
+                               "Proyección 2D del espacio semántico contextual (desde MongoDB)"),
                 html.Div([
                     dcc.Checklist(
                         id="bert-tsne-genres",
@@ -186,20 +239,22 @@ layout = html.Div([
     Input("bert-stats-row", "id"),
 )
 def load_bert_stats(_):
-    emb     = _get_bert_embeddings()
     generos = get_generos()
     cmap    = genre_color_map(generos)
 
-    n_songs  = emb.shape[0] if emb is not None else "—"
-    emb_dim  = emb.shape[1] if emb is not None else "768"
-    model_nm = "bert-base-uncased"
+    # Contar canciones con vector BERT en MongoDB
+    df = get_corpus_df()
+    n_con_vector = 0
+    if not df.empty and "embeddings_beto_cls" in df.columns:
+        n_con_vector = df["embeddings_beto_cls"].apply(
+            lambda v: isinstance(v, (list, np.ndarray)) and len(v) > 0
+        ).sum()
 
     stats = html.Div([
-        stat_card(f"{n_songs:,}" if isinstance(n_songs, int) else n_songs,
-                  "Embeddings", "canciones vectorizadas", ACCENT1, "🧠"),
-        stat_card(str(emb_dim), "Dimensiones", "por vector CLS", ACCENT2, "📐"),
-        stat_card(model_nm, "Modelo", "HuggingFace", ACCENT3, "🤗"),
-        stat_card(f"{len(generos)}", "Géneros", "en el corpus", "#10B981", "🎵"),
+        stat_card(f"{n_con_vector:,}", "Con embedding", "canciones en MongoDB", ACCENT1, "🧠"),
+        stat_card("768",               "Dimensiones",   "vector CLS de BERT",   ACCENT2, "📐"),
+        stat_card(f"{len(generos)}",   "Géneros",       "en el corpus",          ACCENT3, "🎸"),
+        stat_card("bert-base-uncased", "Modelo",        "HuggingFace",           "#10B981", "🤗"),
     ], className="stat-grid")
 
     opts = [
@@ -218,8 +273,8 @@ def load_bert_stats(_):
     State("bert-poly-ctx3", "value"),
     prevent_initial_call=True,
 )
-def compute_polysemy(_, word, c1, c2, c3):
-    contexts = [c for c in [c1, c2, c3] if c and c.strip()]
+def calc_polisemia(_, word, ctx1, ctx2, ctx3):
+    contexts = [c for c in [ctx1, ctx2, ctx3] if c and c.strip()]
     if not word or len(contexts) < 2:
         return html.Div("Necesitas la palabra y al menos 2 contextos.",
                         style={"color": TEXT_SEC, "fontSize": "12px"})
@@ -240,10 +295,12 @@ def compute_polysemy(_, word, c1, c2, c3):
         color = ACCENT1 if sim > 0.85 else (ACCENT3 if sim > 0.70 else "#EF4444")
         rows.append(html.Div([
             html.Div([
-                html.Div(f'"{r["ctx_a"][:50]}…"', style={"fontSize": "11px", "color": TEXT_SEC}),
+                html.Div(f'"{r["ctx_a"][:50]}…"',
+                         style={"fontSize": "11px", "color": TEXT_SEC}),
                 html.Div("vs", style={"color": TEXT_MUTED, "fontSize": "10px",
                                       "margin": "2px 0"}),
-                html.Div(f'"{r["ctx_b"][:50]}…"', style={"fontSize": "11px", "color": TEXT_SEC}),
+                html.Div(f'"{r["ctx_b"][:50]}…"',
+                         style={"fontSize": "11px", "color": TEXT_SEC}),
             ], style={"flex": "1"}),
             html.Div(f"{sim:.4f}", style={
                 "color": color, "fontWeight": "800", "fontFamily": FONT_MONO,
@@ -303,17 +360,19 @@ def predict_mask(_, sentence):
         pct   = p["score"] / max_score
         color = ACCENT1 if pct > 0.8 else (ACCENT2 if pct > 0.5 else TEXT_MUTED)
         bars.append(html.Div([
-            html.Span(p["token"], style={"color": color, "fontWeight": "700",
-                                          "fontFamily": FONT_MONO, "fontSize": "12px",
-                                          "width": "100px", "display": "inline-block"}),
+            html.Span(p["token"], style={
+                "color": color, "fontWeight": "700", "fontFamily": FONT_MONO,
+                "fontSize": "12px", "width": "100px", "display": "inline-block",
+            }),
             html.Div(style={
                 "height": "8px", "borderRadius": "4px",
                 "background": f"linear-gradient(90deg, {color}, {color}88)",
                 "width": f"{pct * 160}px", "display": "inline-block",
                 "verticalAlign": "middle", "margin": "0 8px",
             }),
-            html.Span(f"{p['score']:.4f}", style={"color": TEXT_SEC, "fontSize": "10px",
-                                                   "fontFamily": FONT_MONO}),
+            html.Span(f"{p['score']:.4f}", style={
+                "color": TEXT_SEC, "fontSize": "10px", "fontFamily": FONT_MONO,
+            }),
         ], style={"padding": "4px 0"}))
     return html.Div(bars)
 
@@ -328,19 +387,31 @@ def bert_search(_, query):
     if not query:
         return html.Div("Escribe una consulta.", style={"color": TEXT_SEC})
 
+    # ← Lee embeddings de MongoDB (beto_cls), no de .npy
     emb = _get_bert_embeddings()
     df  = get_corpus_df()
+
     if emb is None or df.empty:
-        return html.Div("Embeddings BERT no disponibles — ejecuta el notebook 05.",
-                        style={"color": "#EF4444", "fontSize": "12px"})
+        return html.Div(
+            "Embeddings BERT no disponibles en MongoDB. "
+            "Ejecuta actualizar_beto_cls_mongodb() del notebook correspondiente.",
+            style={"color": "#EF4444", "fontSize": "12px"},
+        )
 
     svc = _get_bert_service()
     if not svc:
         return html.Div("BERT no disponible.", style={"color": "#EF4444"})
 
+    # Alinear DataFrame con la matriz de embeddings
+    mask = df["embeddings_beto_cls"].apply(
+        lambda v: isinstance(v, (list, np.ndarray)) and len(v) > 0
+    )
+    df_aligned = df[mask].reset_index(drop=True)
+
     results = svc.semantic_search(
-        query, emb, df.iloc[:len(emb)].reset_index(drop=True),
-        top_n=5, col_title="titulo", col_artist="artista", col_genre="genero",
+        query, emb, df_aligned,
+        top_n=5,
+        col_title="titulo", col_artist="artista", col_genre="genero",
     )
     cmap = genre_color_map(get_generos())
 
@@ -354,14 +425,17 @@ def bert_search(_, query):
                 html.Div([
                     r["artist"],
                     html.Span(r["genre"], className="genre-tag",
-                              style={"background": f"{gc}20", "color": gc, "marginLeft": "8px"}),
-                ], className="result-meta", style={"display": "flex", "alignItems": "center"}),
+                              style={"background": f"{gc}20", "color": gc,
+                                     "marginLeft": "8px"}),
+                ], className="result-meta",
+                   style={"display": "flex", "alignItems": "center"}),
             ], style={"flex": "1"}),
             html.Div(f"{r['score']:.4f}", className="result-score"),
         ], className="result-row"))
 
-    return html.Div(rows) if rows else html.Div("Sin resultados.",
-                                                 style={"color": TEXT_SEC})
+    return html.Div(rows) if rows else html.Div(
+        "Sin resultados para esta consulta.", style={"color": TEXT_SEC}
+    )
 
 
 @callback(
@@ -372,37 +446,48 @@ def update_bert_tsne(generos_sel):
     if not generos_sel:
         return empty_fig("Selecciona al menos un género")
 
+    # ← Lee embeddings de MongoDB
     emb = _get_bert_embeddings()
     df  = get_corpus_df()
+
     if emb is None or df.empty:
-        return empty_fig("Embeddings no encontrados — ejecuta el notebook 05")
+        return empty_fig(
+            "Embeddings BERT no encontrados en MongoDB. "
+            "Ejecuta actualizar_beto_cls_mongodb()."
+        )
 
-    n    = min(len(df), len(emb))
-    df_s = df.iloc[:n].copy()
-    df_s["_idx"] = range(n)
+    # Alinear: solo filas con vector BERT válido
+    mask_vec = df["embeddings_beto_cls"].apply(
+        lambda v: isinstance(v, (list, np.ndarray)) and len(v) > 0
+    )
+    df_v  = df[mask_vec].copy().reset_index(drop=True)
+    emb_v = np.array(df_v["embeddings_beto_cls"].tolist())
 
-    mask = df_s["genero"].isin(generos_sel)
-    df_f = df_s[mask].copy()
+    # Filtrar por géneros
+    mask_g = df_v["genero"].isin(generos_sel)
+    df_f   = df_v[mask_g].copy()
+    emb_f  = emb_v[mask_g.values]
+
     if df_f.empty:
-        return empty_fig("Sin datos para la selección")
+        return empty_fig("Sin datos para la selección de géneros")
 
     sample_n = min(1000, len(df_f))
-    df_f  = df_f.sample(sample_n, random_state=42)
-    emb_f = emb[df_f["_idx"].values]
+    idx    = np.random.default_rng(42).choice(len(df_f), sample_n, replace=False)
+    df_s   = df_f.iloc[idx]
+    emb_s  = emb_f[idx]
 
     tsne   = TSNE(n_components=2, perplexity=min(30, sample_n - 1),
                   random_state=42, max_iter=500)
-    coords = tsne.fit_transform(emb_f)
+    coords = tsne.fit_transform(emb_s)
 
     cmap = genre_color_map(generos_sel)
     fig  = go.Figure()
     for g in sorted(generos_sel):
-        m = df_f["genero"].values == g
+        m = df_s["genero"].values == g
         fig.add_trace(go.Scatter(
             x=coords[m, 0], y=coords[m, 1], mode="markers", name=g,
             marker=dict(color=cmap.get(g, ACCENT1), size=4, opacity=0.7),
         ))
-    fig.update_layout(**PLOTLY_LAYOUT, height=350,
-                      legend=dict(orientation="h", yanchor="top", y=-0.1,
-                                  font=dict(size=10)))
+    fig.update_layout(**PLOTLY_LAYOUT, height=350)
+    fig.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.1, font=dict(size=10)))
     return fig

@@ -63,7 +63,7 @@ def get_corpus_df() -> pd.DataFrame:
     logger.info("Cargando corpus desde MongoDB Atlas…")
     try:
         cdb = consultar_base_datos()
-        df  = cdb.cargar_todas().df
+        df  = cdb.cargar_por_generos(["pop","alternative pop","hip hop","alternative rock","dance pop", "rock"]).df
         logger.info("Corpus cargado: %d canciones.", len(df))
         return df
     except Exception as e:

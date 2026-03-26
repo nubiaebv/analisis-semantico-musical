@@ -403,32 +403,34 @@ def actualizar_beto_cls_mongodb(
     col_letra: str = "letra",
     batch_size: int = 50,
 ) -> None:
-    """
-    Calcula embeddings BETO [CLS] para cada canción del DataFrame
-    y actualiza el campo embeddings.beto_cls en MongoDB.
-    """
     from src.database.MongoConnection import MongoConnection, MongoConfig
     from bson import ObjectId
 
     MongoConnection.connect()
     collection = MongoConnection.get_db()[MongoConfig.COLLECTION_CANCIONES]
 
-    textos  = df[col_letra].fillna("").tolist()
-    ids     = df[col_id].tolist()
-
-    print(f"Generando embeddings BETO para {len(textos)} canciones...")
-    embeddings = embedding_cls(textos, tokenizer, model, batch_size=batch_size)
-
-    print("Actualizando MongoDB...")
     actualizados = 0
-    for cancion_id, vector in zip(ids, embeddings):
+
+    for i, row in df.iterrows():
+        letra = str(row[col_letra]) if pd.notna(row[col_letra]) else ""
+        if not letra.strip():
+            continue
+
+        # Calcular embedding para UNA canción a la vez
+        vector = embedding_cls([letra], tokenizer, model, batch_size=1)
+        vector_list = vector[0].tolist()
+
+        if not vector_list:
+            continue
+
         collection.update_one(
-            {"_id": ObjectId(cancion_id)},
-            {"$set": {"embeddings.beto_cls": vector.tolist()}},
+            {"_id": ObjectId(row[col_id])},
+            {"$set": {"embeddings.beto_cls": vector_list}},
         )
         actualizados += 1
-        if actualizados % 100 == 0:
-            print(f"  Actualizados: {actualizados}/{len(ids)}")
+
+        if actualizados % batch_size == 0:
+            print(f"  Actualizados: {actualizados}/{len(df)}")
 
     print(f"\nTotal actualizados en MongoDB: {actualizados}")
     MongoConnection.disconnect()

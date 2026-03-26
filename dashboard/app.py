@@ -1,28 +1,4 @@
-"""
-dashboard/app.py
-================
-Punto de entrada del Dashboard — Análisis Semántico Musical
-Proyecto 2 · Minería de Textos · CUC
 
-Estructura:
-    dashboard/
-    ├── app.py              ← este archivo (entry point)
-    ├── db.py               ← conexión MongoDB Atlas
-    ├── components.py       ← UI reutilizables y tema
-    ├── assets/
-    │   └── style.css       ← estilos globales
-    └── pages/
-        ├── bow_tfidf.py    ← BoW / TF-IDF
-        ├── word2vec.py     ← Word2Vec
-        ├── beto.py         ← BERT (bert-base-uncased)
-        ├── comparacion.py  ← Comparación final
-        └── busqueda.py     ← Búsqueda interactiva MongoDB
-
-Uso:
-    cd <PROJECT_ROOT>
-    python dashboard/app.py
-    # Abre http://127.0.0.1:8050
-"""
 
 import sys
 import os
@@ -42,7 +18,7 @@ from dash import html, dcc, Input, Output, callback
 import dash_bootstrap_components as dbc
 
 from dashboard.components import (
-    DARK_BG, DARK_CARD, DARK_PANEL, BORDER, ACCENT1, ACCENT2,
+    DARK_BG, DARK_CARD, DARK_PANEL, BORDER, ACCENT1, ACCENT2, ACCENT3,
     TEXT_PRI, TEXT_SEC, TEXT_MUTED, FONT_MONO,
 )
 from dashboard.db import get_stats, get_generos

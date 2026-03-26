@@ -20,6 +20,15 @@ from dashboard.db import get_corpus_df, get_generos, buscar_por_palabra
 
 register_page(__name__, path="/busqueda", name="Búsqueda")
 
+# ── Helper: hex (#RRGGBB) → rgba(r,g,b,alpha) ────────────────────────────────
+def _hex_to_rgba(hex_color: str, alpha: float = 0.25) -> str:
+    hex_color = hex_color.lstrip("#")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
 # ── Layout ──────────────────────────────────────────────────────────────────
 layout = html.Div([
     page_header(
@@ -264,9 +273,9 @@ def do_search(_, word, genre_filter, top_n):
             textposition="outside",
             textfont=dict(size=10, family=FONT_MONO),
         ))
-        fig_genres.update_layout(**PLOTLY_LAYOUT, height=230,
-                                  xaxis=dict(title=f'Ocurrencias de "{word}"'),
-                                  yaxis=dict(gridcolor="transparent"))
+        fig_genres.update_layout(**PLOTLY_LAYOUT, height=230)
+        fig_genres.update_xaxes(title=f'Ocurrencias de "{word}"')
+        fig_genres.update_yaxes(gridcolor="rgba(0,0,0,0)")
     else:
         fig_genres = empty_fig()
 
@@ -283,15 +292,15 @@ def do_search(_, word, genre_filter, top_n):
             orientation="h",
             marker=dict(
                 color=artist_counts.values.tolist(),
-                colorscale=[[0, f"{ACCENT2}60"], [1, ACCENT1]],
+                colorscale=[[0, _hex_to_rgba(ACCENT2, 0.38)], [1, ACCENT1]],
             ),
             text=artist_counts.values.tolist(),
             textposition="outside",
             textfont=dict(size=10, family=FONT_MONO),
         ))
-        fig_artists.update_layout(**PLOTLY_LAYOUT, height=230,
-                                   xaxis=dict(title="Ocurrencias totales"),
-                                   yaxis=dict(gridcolor="transparent"))
+        fig_artists.update_layout(**PLOTLY_LAYOUT, height=230)
+        fig_artists.update_xaxes(title="Ocurrencias totales")
+        fig_artists.update_yaxes(gridcolor="rgba(0,0,0,0)")
     else:
         fig_artists = empty_fig()
 

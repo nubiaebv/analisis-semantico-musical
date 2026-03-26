@@ -22,6 +22,15 @@ from dashboard.db import get_corpus_df, get_generos
 
 register_page(__name__, path="/bow-tfidf", name="BoW / TF-IDF")
 
+# ── Helper: convierte hex (#RRGGBB) a rgba(r,g,b,alpha) ─────────────────────
+def _hex_to_rgba(hex_color: str, alpha: float = 0.25) -> str:
+    hex_color = hex_color.lstrip("#")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
 # ── Cache de vectorización ───────────────────────────────────────────────────
 _rep_cache: dict = {}
 
@@ -169,23 +178,25 @@ def update_top_words(genero):
     words  = [vocab[i] for i in top_idx]
     vals   = [float(scores[i]) for i in top_idx]
 
-    cmap = genre_color_map(list(set(generos)))
+    cmap  = genre_color_map(list(set(generos)))
     color = cmap.get(genero, ACCENT1)
 
+    # FIX 1: usar rgba() en lugar de hex con alpha (#RRGGBBAA no es válido en Plotly)
     fig = go.Figure(go.Bar(
         y=words[::-1], x=vals[::-1],
         orientation="h",
         marker=dict(
             color=vals[::-1],
-            colorscale=[[0, f"{color}40"], [1, color]],
+            colorscale=[[0, _hex_to_rgba(color, 0.25)], [1, color]],
         ),
         text=[f"{v:.4f}" for v in vals[::-1]],
         textposition="outside",
         textfont=dict(size=10, color=TEXT_SEC, family=FONT_MONO),
     ))
-    fig.update_layout(**PLOTLY_LAYOUT, height=340,
-                      xaxis=dict(title="TF-IDF Score", gridcolor=BORDER),
-                      yaxis=dict(gridcolor="transparent"))
+    fig.update_layout(**PLOTLY_LAYOUT, height=340)
+    # FIX 3 (preventivo): separar ejes para evitar conflicto con PLOTLY_LAYOUT
+    fig.update_xaxes(title="TF-IDF Score", gridcolor=BORDER)
+    fig.update_yaxes(gridcolor="rgba(0,0,0,0)")
     return fig
 
 
@@ -208,17 +219,23 @@ def update_heatmap(_):
 
     sim = cosine_similarity(np.vstack([v.A for v in genre_vecs]))
 
+    # FIX 2: reemplazar hex con alpha (#RRGGBBAA) por rgba() válido
     fig = go.Figure(go.Heatmap(
         z=sim, x=generos_unicos, y=generos_unicos,
-        colorscale=[[0, "#0A0E1A"], [0.5, f"{ACCENT2}88"], [1, ACCENT1]],
+        colorscale=[
+            [0,   "#0A0E1A"],
+            [0.5, _hex_to_rgba(ACCENT2, 0.53)],
+            [1,   ACCENT1],
+        ],
         zmin=0, zmax=1,
         text=np.round(sim, 3),
         texttemplate="%{text:.3f}",
         textfont=dict(size=10),
     ))
-    fig.update_layout(**PLOTLY_LAYOUT, height=380,
-                      xaxis=dict(tickfont=dict(size=9), gridcolor="transparent"),
-                      yaxis=dict(tickfont=dict(size=9), gridcolor="transparent"))
+    fig.update_layout(**PLOTLY_LAYOUT, height=380)
+    # FIX 3 (preventivo): separar ejes
+    fig.update_xaxes(tickfont=dict(size=9), gridcolor="rgba(0,0,0,0)")
+    fig.update_yaxes(tickfont=dict(size=9), gridcolor="rgba(0,0,0,0)")
     return fig
 
 
@@ -249,11 +266,10 @@ def update_ortogonalidad(_):
         textposition="outside",
         textfont=dict(size=10, family=FONT_MONO),
     ))
-    fig.update_layout(
-        **PLOTLY_LAYOUT, height=260,
-        yaxis=dict(range=[-0.1, 0.3], title="Similitud coseno", gridcolor=BORDER),
-        xaxis=dict(tickfont=dict(size=9), gridcolor="transparent"),
-    )
+    # FIX 3: separar ejes del update_layout para evitar conflicto con PLOTLY_LAYOUT
+    fig.update_layout(**PLOTLY_LAYOUT, height=260)
+    fig.update_yaxes(range=[-0.1, 0.3], title="Similitud coseno", gridcolor=BORDER)
+    fig.update_xaxes(tickfont=dict(size=9), gridcolor="rgba(0,0,0,0)")
     fig.add_hline(y=0, line_color=ACCENT2, line_dash="dot", line_width=1)
     return fig
 
