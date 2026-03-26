@@ -35,6 +35,10 @@ class CancionRepository:
     def find_all(self) -> List[CancionEntity]:
         return [CancionEntity.from_mongo(d) for d in self.collection.find()]
 
+    def find_by_generos(self, generos: List[str]) -> List[CancionEntity]:
+        docs = self.collection.find({"genero": {"$in": generos}})
+        return [CancionEntity.from_mongo(d) for d in docs]
+
     def save(self, cancion: CancionEntity) -> CancionEntity:
         result = self.collection.insert_one(cancion.to_mongo())
         cancion.id = str(result.inserted_id)
