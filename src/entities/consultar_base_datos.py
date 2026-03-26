@@ -8,7 +8,7 @@ from src.entities.CancionEntity import CancionEntity
 
 class consultar_base_datos:
     """
-    Carga canciones desde MongoDB (vía CancionService) y las expone
+    Carga canciones desde MongoDB ( CancionService) y las expone
     como un DataFrame de pandas con columnas planas.
     """
 

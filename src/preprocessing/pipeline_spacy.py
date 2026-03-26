@@ -1,9 +1,8 @@
 """
 Clase: pipeline_spacy
 
-Objetivo: Py con funciones para ejecutar el pos tagger con spacy
+ Py con funciones para ejecutar el pos tagger con spacy
 
-Cambios:
 
 """
 import sys

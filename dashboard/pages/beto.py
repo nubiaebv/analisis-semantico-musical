@@ -3,14 +3,6 @@ dashboard/pages/beto.py
 =======================
 Página: Análisis BERT (bert-base-uncased)
 
-Cambios respecto a la versión original:
-  - BetoService ahora se importa desde src.services.embeddings_beto
-    (adaptador que usa el backend real CargadorBETO / embedding_cls / AnalizadorMLM)
-  - _get_bert_embeddings() lee los vectores beto_cls directamente de MongoDB
-    (columna embeddings_beto_cls del DataFrame de consultar_base_datos)
-    en lugar de cargar un archivo .npy externo.
-  - Se corrige el bug: antes llamaba a embeddings_word2vec() en lugar
-    de embeddings_beto().
 """
 
 import sys
@@ -48,7 +40,7 @@ def _get_bert_embeddings() -> np.ndarray:
     """
     Lee los embeddings BERT CLS directamente de MongoDB.
     Retorna np.ndarray (n, 768) o None si no hay vectores.
-    Bugfix: antes llamaba a embeddings_word2vec() — ahora usa embeddings_beto_cls.
+
     """
     df = get_corpus_df()
     if df.empty or "embeddings_beto_cls" not in df.columns:
@@ -68,9 +60,7 @@ def _get_bert_embeddings() -> np.ndarray:
 
 def _get_bert_service():
     """
-    Carga BetoService en memoria (singleton en _bert_cache).
-    Usa el adaptador src/services/embeddings_beto.py que delega
-    al backend real (CargadorBETO, AnalizadorMLM, etc.).
+    Carga persistente de BetoService y delegación de lógica al adaptador de embeddings
     """
     if "svc" in _bert_cache:
         return _bert_cache["svc"]

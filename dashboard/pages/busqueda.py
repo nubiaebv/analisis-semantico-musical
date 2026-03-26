@@ -2,7 +2,7 @@
 dashboard/pages/busqueda.py
 ===========================
 Página: Búsqueda Semántica Interactiva
-Consulta directa a MongoDB Atlas por palabra, género, artista o año.
+
 """
 
 from dash import html, dcc, Input, Output, State, callback, register_page

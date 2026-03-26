@@ -3,23 +3,6 @@ src/embeddings/embeddings_w2v_service.py
 ========================================
 Adaptador Word2VecService
 --------------------------
-El dashboard (word2vec.py) espera una clase Word2VecService con la interfaz:
-
-    svc = Word2VecService()
-    svc.load(models_dir, prefix="w2v")
-    svc.vocab_size          → int
-    svc.vector_size         → int
-    svc.cbow                → modelo cargado
-    svc.skipgram            → modelo cargado
-    svc.most_similar(word, topn, model)   → [(word, score), ...]
-    svc.analogy(a, b, c, topn)            → [(word, score), ...]
-    svc.genre_similarity_matrix(df, ...)  → pd.DataFrame
-
-Este módulo implementa esa interfaz usando el backend real
-(EntrenadorWord2Vec / AnalizadorWord2Vec de embeddings_w2v.py).
-
-Los embeddings de documento se leen directamente de MongoDB a través de
-consultar_base_datos, evitando archivos .npy externos.
 """
 
 import logging
@@ -33,14 +16,7 @@ logger = logging.getLogger(__name__)
 
 class Word2VecService:
     """
-    Wrapper de alto nivel para los modelos Word2Vec del proyecto.
-
-    Carga los modelos CBOW y Skip-Gram desde data/results/ (generados
-    por el notebook de entrenamiento) y expone la interfaz que el
-    dashboard necesita.
-
-    Si los modelos no están en disco todavía, los entrena on-the-fly
-    usando el corpus de MongoDB, los guarda y los cachea en memoria.
+    Wrapper de Word2Vec con gestión de caché, carga desde disco y auto-entrenamiento dinámico desde MongoDB.
     """
 
     def __init__(self):
@@ -69,11 +45,7 @@ class Word2VecService:
 
     def load(self, models_dir, prefix: str = "w2v") -> "Word2VecService":
         """
-        Carga los modelos desde disco (rutas: <models_dir>/<prefix>_cbow.model
-        y <models_dir>/<prefix>_skipgram.model).
-
-        Si no existen en disco, intenta entrenarlos on-the-fly usando el corpus
-        de MongoDB y los guarda para usos futuros.
+        Carga de modelos CBOW/Skip-Gram desde disco con fallback a entrenamiento automático y guardado en <models_dir>
         """
         from gensim.models import Word2Vec as _W2V
         from src.embeddings.embeddings_w2v import AnalizadorWord2Vec, EntrenadorWord2Vec
@@ -166,11 +138,6 @@ class Word2VecService:
         """
         Retorna las `topn` palabras más cercanas a `word`.
 
-        Parameters
-        ----------
-        word  : palabra a consultar (minúsculas)
-        topn  : número de vecinos
-        model : "skipgram" | "cbow"
         """
         ana = self._get_analizador(model)
         if ana is None:
@@ -193,11 +160,6 @@ class Word2VecService:
         Resuelve la analogía vectorial: b − a + c ≈ ???
         (el orden sigue la convención del dashboard: A−B+C)
 
-        Parameters
-        ----------
-        a, b, c : palabras de la analogía
-        topn    : número de resultados
-        model   : "skipgram" | "cbow"
         """
         ana = self._get_analizador(model)
         if ana is None:
@@ -221,9 +183,6 @@ class Word2VecService:
         Calcula la matriz de similitud coseno entre géneros usando el
         vector promedio de cada género con el modelo Skip-Gram (o CBOW).
 
-        Returns
-        -------
-        pd.DataFrame  (géneros × géneros), valores en [0, 1]
         """
         ana = self._get_analizador("skipgram")
         if ana is None:
