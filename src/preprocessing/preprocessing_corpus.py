@@ -15,16 +15,17 @@ class preprocessing_corpus:
             self._df = abrir_archivo("corpus_canciones_webScraping.csv")
 
         print(len(self._df))
-        self._pipeline_nltk = pipeline_nltk(self._df)
-        self._pipeline_spacy = pipeline_spacy(self._df)
+
 
     def procesar_corpus(self):
         print("Procesando corpus limpieza")
         df = self._clear_corpus.limpiar(self._df)
-
+        nltk = pipeline_nltk(df)
+        spacy = pipeline_spacy(df)
         if df is not None:
             print("Procesando corpus spacy")
-            df_spacy= self._pipeline_spacy.ejecutar()
+            df_spacy= spacy.ejecutar()
+            #print(df_spacy.info())
             df = pd.merge(
                 df,
                 df_spacy[['Artist', 'nombre_cancion', 'letra_cancion','Periodo','Genero','Lematizado']],  # Solo tomamos las llaves y la que quieres agregar
@@ -32,11 +33,12 @@ class preprocessing_corpus:
                 how='left'
             )
             df.rename(
-                columns={'Lematizado': 'Lematizado_Spacy'}, inplace=True)
-
+                columns={'Lematizado_y': 'Lematizado_Spacy'}, inplace=True)
+        #print(df.info())
         if df is not None:
             print("Procesando corpus nltk")
-            df_nltk = self._pipeline_nltk.ejecutar()
+            df_nltk = nltk.ejecutar()
+            #print(df_nltk.info())
             df = pd.merge(
                 df,
                 df_nltk[['Artist', 'nombre_cancion', 'letra_cancion', 'Periodo', 'Genero', 'Lematizado']],
@@ -46,7 +48,7 @@ class preprocessing_corpus:
             )
             df.rename(
                 columns={'Lematizado': 'Lematizado_nltk'}, inplace=True)
-
+        #print(df.info())
         if df is not None:
             print("Procesando corpus en mongo")
             insertor = insertar_base_datos(batch_size=100)

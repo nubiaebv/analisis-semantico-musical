@@ -1,6 +1,6 @@
 from src.preprocessing.GeniusScraper import GeniusScraper, GENIUS_TOKEN, ARTISTAS
 from src.preprocessing.preprocessing_corpus import preprocessing_corpus
-
+from src.embeddings.embeddings_beto import CargadorBETO
 
 ejecutar_webscraping_corpus = False
 
@@ -27,6 +27,38 @@ else:
     print("Procesar Archivo Scraper ")
     corpus_scraper = preprocessing_corpus(False)
     df =corpus_scraper.procesar_corpus()
+    print("Procesar word2vec")
 
+    cargador = consultar_base_datos()
+    cargador.cargar_por_generos(["pop", "alternative pop", "hip hop", "alternative rock", "dance pop", "rock"])
+    df = cargador.df
+
+    print(f"Canciones cargadas: {len(df):,}")
+    print(f"Géneros disponibles: {df['genero'].unique()}")
+    print(f"Idiomas: {df['idioma'].value_counts().to_dict()}")
+
+    actualizar_embeddings_mongodb(
+        df=df,
+        modelo=entrenador.modelo_sg,
+        col_id="id",
+        col_letra="letra",
+        batch_size=100,
+    )
+    print("word2vec_avg actualizado correctamente en MongoDB.")
+    print("Procesar Beto")
+
+    beto = CargadorBETO()
+    tokenizer = beto.tokenizer
+    model = beto.model
+
+    actualizar_beto_cls_mongodb(
+        df=df,
+        tokenizer=tokenizer,
+        model=model,
+        col_id="id",
+        col_letra="letra",
+        batch_size=32,
+    )
+    print("beto_cls actualizado correctamente en MongoDB.")
 
 

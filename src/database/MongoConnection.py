@@ -24,7 +24,7 @@ class MongoConnection:
             )
             cls._client.admin.command("ping")
             cls._db = cls._client[MongoConfig.DB_NAME]
-            print(f"✅ Conectado a MongoDB Atlas: {MongoConfig.DB_NAME}")
+            print(f"Conectado a MongoDB Atlas: {MongoConfig.DB_NAME}")
         return cls._db
 
     @classmethod

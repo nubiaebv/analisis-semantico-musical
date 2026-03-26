@@ -65,6 +65,10 @@ class consultar_base_datos:
         cancion = self._service.obtener_cancion(cancion_id)
         self._df = self._build([cancion])
         return self
+    def cargar_por_generos(self, generos: List[str]) -> "consultar_base_datos":
+        canciones = self._service.obtener_por_generos(generos)
+        self._df = self._build(canciones)
+        return self
 
     # ─── Accesos rápidos ─────────────────────────────────────────────────────
 

@@ -62,3 +62,5 @@ class CancionService:
 
     def eliminar_cancion(self, cancion_id: str) -> bool:
         return self.repository.delete(cancion_id)
+    def obtener_por_generos(self, generos: List[str]) -> List[CancionEntity]:
+        return self.repository.find_by_generos(generos)

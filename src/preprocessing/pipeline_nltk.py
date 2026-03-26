@@ -128,7 +128,7 @@ class pipeline_nltk:
 
     def _paso_minusculas(self):
         tqdm.pandas(desc=" Paso 4 Mayúsculas / minúsculas")
-        self._df['pos_tags_lower'] = self._df['StopWords'].progress_apply(self._convertir_minusculas)
+        self._df['Minusculas'] = self._df['StopWords'].progress_apply(self._convertir_minusculas)
 
     # Paso 5 Lematización
     def _get_wordnet_pos(self, tag):
@@ -159,7 +159,7 @@ class pipeline_nltk:
 
     def _paso_lematizacion(self):
         tqdm.pandas(desc="Paso 5 Lematización")
-        self._df['Lematizado'] = self._df['pos_tags_lower'].progress_apply(self._lematizar)
+        self._df['Lematizado'] = self._df['Minusculas'].progress_apply(self._lematizar)
 
     # Ejecutar pipeline completo
     def ejecutar(self):
