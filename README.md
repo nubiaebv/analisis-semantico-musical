@@ -188,7 +188,7 @@ python -m spacy download en_core_web_sm    # Inglés
 
 ---
 
-## 🔧 Configuración
+##  Configuración
 
 Crea un archivo `.env` en la raíz del proyecto con tus credenciales de MongoDB Atlas:
 
@@ -249,7 +249,7 @@ Corpus Proyecto 1 (CSV)
 
 ---
 
-## 📊 Análisis Implementados
+##  Análisis Implementados
 
 ### Word2Vec — `03_word2vec_analisis.ipynb`
 
@@ -273,7 +273,7 @@ Corpus Proyecto 1 (CSV)
 
 ---
 
-## 👥 Autores
+##  Autores
 
 **Nubia Elena Brenes Valerín** · **Pablo Andrés Marín Castillo**
 
