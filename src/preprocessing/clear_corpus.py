@@ -105,6 +105,41 @@ class clear_corpus:
         #print(f"    Registros en '{self.idioma_objetivo}': {len(df_filtrado):,}")
         return df
 
+    def _normalizar_texto(self, texto):
+        if not isinstance(texto, str): return "desconocido"
+        # 1. Todo a minúsculas
+        texto = texto.lower()
+        # 2. Reemplazar guiones, barras y puntos por espacios
+        texto = re.sub(r'[-/.]', ' ', texto)
+        # 3. Quitar caracteres especiales residuales (letras y espacios)
+        texto = re.sub(r'[^a-z\s]', '', texto)
+        # 4. Colapsar espacios múltiples
+        texto = ' '.join(texto.split())
+        return texto
+
+    def _normaliza_genero(self, df):
+
+        col = self.columna_genre
+        df[col] = df[col].apply(self._normalizar_texto)
+        return df
+
+    def _limpiar_estructura_cancion(self, texto):
+        if not isinstance(texto, str): return ""
+        # 1. Eliminar corchetes [Intro], [Verso], etc.
+        texto = re.sub(r'\[.*?\]', '', texto)
+        # 2. Eliminar "Letra de ..."
+        texto = re.sub(r'letra de ".*?"', '', texto, flags=re.IGNORECASE)
+        # 3. Limpiar saltos de línea y espacios
+        texto = re.sub(r'\n+', ' ', texto)
+        texto = ' '.join(texto.split())
+        return texto.strip()
+
+    def _normaliza_letra(self, df):
+
+        col = self.columna_lyric
+        df[col] = df[col].apply(self._limpiar_estructura_cancion)
+        return df
+
     # ------------------------------------------------------------------
     # Método principal
     # ------------------------------------------------------------------
@@ -123,12 +158,16 @@ class clear_corpus:
         pd.DataFrame
             DataFrame limpio.
         """
+        print(f"Buscando la columna: '{self.columna_lyric}'")
+        print(f"¿Está en el DF?: {self.columna_lyric in df.columns}")
         print(f"Registros iniciales: {len(df):,}\n")
 
         df = self._eliminar_placeholders(df)
         df = self._eliminar_letras_cortas(df)
         df = self._filtrar_anios(df)
         df = self._limpiar_unicode(df)
+        df = self._normaliza_genero(df)
+        df = self._normaliza_letra(df)
         df = self._filtrar_idioma(df)
 
         print(f"\nRegistros finales: {len(df):,}")

@@ -14,7 +14,7 @@ import pandas as pd
 # Configurar logger para esta clase
 logger = logging.getLogger(__name__)
 
-def obtener_ruta_local(nombre_objetivo="analisis-musical"):
+def obtener_ruta_local(nombre_objetivo="analisis-semantico-musical"):
     """
     Busca la ruta hasta la carpeta con nombre `nombre_objetivo` en entorno local
     """
@@ -53,7 +53,7 @@ def obtener_ruta_local(nombre_objetivo="analisis-musical"):
         return None
 
 
-def obtener_ruta_app(nombre_objetivo="analisis-musical"):
+def obtener_ruta_app(nombre_objetivo="analisis-semantico-musical"):
     """
     Versión simplificada y robusta para Azure App Service y entornos locales
 
