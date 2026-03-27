@@ -7,17 +7,6 @@ class clear_corpus:
     """
     Pipeline completo de limpieza del corpus de canciones.
 
-    Pasos aplicados en orden:
-        1. Eliminar letras con texto placeholder
-        2. Eliminar letras demasiado cortas
-        3. Eliminar registros con año fuera de rango
-        4. Limpiar caracteres Unicode invisibles
-        5. Filtrar por idioma
-
-    Uso
-    ---
-        limpieza = LimpiezaCorpus()
-        df_limpio = limpieza.limpiar(df)
     """
 
     # --- Constantes ---
@@ -148,15 +137,6 @@ class clear_corpus:
         """
         Ejecuta el pipeline completo y retorna el DataFrame limpio.
 
-        Parameters
-        ----------
-        df : pd.DataFrame
-            DataFrame crudo con columnas Artist, Title, Lyric, Year, Genre.
-
-        Returns
-        -------
-        pd.DataFrame
-            DataFrame limpio.
         """
         print(f"Buscando la columna: '{self.columna_lyric}'")
         print(f"¿Está en el DF?: {self.columna_lyric in df.columns}")

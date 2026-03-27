@@ -3,11 +3,6 @@ dashboard/pages/word2vec.py
 ===========================
 Página: Análisis Word2Vec
 
-Cambios respecto a la versión original:
-  - Word2VecService ahora se importa desde src.embeddings.embeddings_w2v_service
-  - _get_doc_embeddings() lee los vectores word2vec_avg directamente de MongoDB
-    (columna embeddings_word2vec_avg del DataFrame de consultar_base_datos)
-    en lugar de cargar un archivo .npy externo.
 """
 
 import sys
@@ -44,8 +39,7 @@ _w2v_cache: dict = {}
 
 def _get_w2v():
     """
-    Carga los modelos Word2Vec desde data/results/ usando Word2VecService.
-    Si los archivos no existen los entrena on-the-fly con el corpus de MongoDB.
+    Carga de modelos en data/results/ con fallback a entrenamiento directo desde MongoDB.
     """
     if "svc" in _w2v_cache:
         return _w2v_cache["svc"]
@@ -71,8 +65,7 @@ def _get_w2v():
 
 def _get_doc_embeddings() -> np.ndarray:
     """
-    Lee los vectores word2vec_avg directamente del DataFrame de MongoDB.
-    Retorna un np.ndarray de forma (n_canciones, dim) o None si no hay vectores.
+    Carga word2vec_avg desde MongoDB a np.ndarray (retorna None si no existen)
     """
     df = get_corpus_df()
     if df.empty or "embeddings_word2vec_avg" not in df.columns:

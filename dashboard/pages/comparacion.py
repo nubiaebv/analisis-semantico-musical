@@ -3,15 +3,6 @@ dashboard/pages/comparacion.py
 ==============================
 Página: Comparación Final — BoW vs Word2Vec vs BERT
 
-Cambios respecto a la versión original:
-  - _load_all() ya no carga archivos .npy/.npz externos.
-    Ahora construye las matrices directamente desde MongoDB:
-      • TF-IDF  → vectorizando en caliente con sklearn (igual que bow_tfidf.py)
-      • Word2Vec → columna embeddings_word2vec_avg del DataFrame de MongoDB
-      • BERT     → columna embeddings_beto_cls del DataFrame de MongoDB
-  - Se elimina la dependencia de RESULTS / data/results/.
-  - El resto de la lógica (clasificación, clustering, t-SNE, gráficos)
-    permanece exactamente igual.
 """
 
 import numpy as np
@@ -54,15 +45,7 @@ _data_cache: dict = {}
 
 def _load_all() -> dict:
     """
-    Construye las tres representaciones directamente desde MongoDB.
-
-    Retorna un dict con:
-        "tfidf"        → scipy.sparse matrix  (n, vocab)
-        "w2v"          → np.ndarray           (n, dim_w2v)
-        "bert"         → np.ndarray           (n, 768)
-        "genres_tfidf" → np.ndarray           (n,)  — etiquetas alineadas con tfidf
-        "genres_w2v"   → np.ndarray           (n,)  — etiquetas alineadas con w2v
-        "genres_bert"  → np.ndarray           (n,)  — etiquetas alineadas con bert
+   Pipeline de vectorización: Generación de embeddings (TF-IDF/W2V/BERT) y mapeo de géneros desde MongoDB
     """
     if _data_cache:
         return _data_cache
@@ -122,8 +105,7 @@ def _load_all() -> dict:
 
 def _get_subset(key: str, n_max: int = 800):
     """
-    Retorna (X_sub, g_sub) con máximo n_max muestras aleatorias.
-    Ahora cada representación tiene su propio array de géneros alineado.
+    Submuestreo aleatorio (n_max) manteniendo correspondencia estricta entre vectores y géneros.
     """
     data = _load_all()
     X = data.get(key)

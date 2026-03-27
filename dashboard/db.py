@@ -2,8 +2,7 @@
 dashboard/db.py
 ===============
 Módulo de conexión a MongoDB Atlas para el Dashboard.
-Reutiliza consultar_base_datos del proyecto principal añadiendo
-PROJECT_ROOT a sys.path de forma robusta.
+Reutilización de lógica de base de datos con resolución de rutas relativas mediante sys.path
 """
 
 import sys
@@ -88,11 +87,6 @@ def buscar_por_palabra(
     Busca canciones cuya letra contiene la palabra dada.
     Retorna columnas: titulo, artista, genero, anio, fragmento, ocurrencias.
 
-    Parámetros
-    ----------
-    palabra : str   Palabra o frase a buscar (case-insensitive)
-    top_n   : int   Máximo de resultados
-    genero  : str   Filtrar por género (opcional)
     """
     df = get_corpus_df()
     if df.empty:

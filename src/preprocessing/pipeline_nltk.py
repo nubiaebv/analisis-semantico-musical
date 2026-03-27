@@ -1,9 +1,7 @@
 """
 Clase: pipeline_nltk
+Py con funciones para ejecutar el pos tagger con nltk
 
-Objetivo: Py con funciones para ejecutar el pos tagger con nltk
-
-Cambios:
 
 """
 # Configurar SSL PRIMERO (antes de importar NLTK)

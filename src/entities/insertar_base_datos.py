@@ -22,8 +22,7 @@ class insertar_base_datos:
     def _calcular_ratio_sustantivos_verbos(self, pos_tags_spacy: list) -> float:
         """
         Calcula ratio sustantivos/verbos desde pos_tags de spaCy.
-        Formato: [(token, pos), (token, pos), ...]
-        NOUN, PROPN = sustantivos | VERB, AUX = verbos
+
         """
         sustantivos = sum(
             1 for item in pos_tags_spacy

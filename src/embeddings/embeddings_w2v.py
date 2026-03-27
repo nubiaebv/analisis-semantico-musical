@@ -39,13 +39,6 @@ class EntrenadorWord2Vec:
     Entrena y gestiona modelos Word2Vec (CBOW y Skip-Gram)
     sobre el corpus musical.
 
-    Uso rápido
-    ----------
-        from src.embeddings.embeddings_w2v import EntrenadorWord2Vec
-
-        entrenador = EntrenadorWord2Vec(df)
-        entrenador.entrenar()          # entrena ambos modelos
-        entrenador.guardar("models/")  # persiste en disco
     """
 
     def __init__(self, df: pd.DataFrame, col_letra: str = "letra"):
@@ -143,12 +136,6 @@ class AnalizadorWord2Vec:
     """
     Herramientas de análisis semántico usando un modelo Word2Vec entrenado.
 
-    Uso
-    ---
-        analizador = AnalizadorWord2Vec(modelo_cbow)
-        analizador.palabras_similares("love", topn=10)
-        analizador.analogia("man", "king", "woman")
-        analizador.similitud_generos(df)
     """
 
     def __init__(self, modelo: Word2Vec):
@@ -252,9 +239,6 @@ class AnalizadorWord2Vec:
         Calcula el vector promedio de cada género y la distancia coseno
         entre todos los pares de géneros.
 
-        Returns
-        -------
-        pd.DataFrame con la matriz de similitud (géneros × géneros)
         """
         vectores_genero: Dict[str, np.ndarray] = {}
         generos = df[col_genero].dropna().unique()

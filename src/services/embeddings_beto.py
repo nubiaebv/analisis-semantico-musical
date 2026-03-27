@@ -3,23 +3,6 @@ src/services/embeddings_beto.py
 ================================
 Adaptador BetoService
 ----------------------
-El dashboard (beto.py) espera una clase BetoService con la interfaz:
-
-    svc = BetoService(model_name="bert-base-uncased", batch_size=32, max_length=128)
-    svc.load_model()
-    svc.polysemy_demo(word, contexts)  → [{"ctx_a", "ctx_b", "sim"}, ...]
-    svc.fill_mask(sentence, top_k)     → [{"token", "score"}, ...]
-    svc.semantic_search(query, emb, df, top_n, col_title, col_artist, col_genre)
-        → [{"rank", "title", "artist", "genre", "score"}, ...]
-
-Este módulo implementa esa interfaz usando el backend real:
-    - CargadorBETO  (carga tokenizer + modelo)
-    - embedding_cls / embedding_token  (genera embeddings)
-    - AnalizadorMLM  (pipeline fill-mask)
-    - BuscadorSemantico  (búsqueda semántica)
-
-Los embeddings de documento se leen directamente de MongoDB a través de
-consultar_base_datos, evitando archivos .npy externos.
 """
 
 import logging
@@ -31,10 +14,7 @@ logger = logging.getLogger(__name__)
 
 class BetoService:
     """
-    Wrapper de alto nivel para el modelo BERT del proyecto.
-
-    Expone la interfaz que el dashboard necesita delegando al backend real
-    (CargadorBETO, embedding_cls, embedding_token, AnalizadorMLM).
+    Wrapper unificado de servicios BERT (Embeddings + MLM) para consumo directo desde el Dashboard.
     """
 
     def __init__(
@@ -92,14 +72,6 @@ class BetoService:
         Calcula la similitud coseno entre todos los pares de contextos para
         la misma palabra, demostrando polisemia contextual.
 
-        Parameters
-        ----------
-        word     : palabra objetivo (ej. "rock")
-        contexts : lista de oraciones que contienen la palabra
-
-        Returns
-        -------
-        Lista de dicts con claves: ctx_a, ctx_b, sim
         """
         if not self._lazy_load():
             return []
@@ -148,14 +120,6 @@ class BetoService:
         """
         Predice la palabra enmascarada usando el pipeline fill-mask de BERT.
 
-        Parameters
-        ----------
-        sentence : oración con exactamente un [MASK]
-        top_k    : número de predicciones
-
-        Returns
-        -------
-        Lista de dicts con claves: token, score
         """
         mlm = self._get_mlm()
         if mlm is None:
@@ -187,17 +151,6 @@ class BetoService:
         Busca las canciones más similares a `query` usando los embeddings
         BERT pre-calculados que ya están en MongoDB.
 
-        Parameters
-        ----------
-        query      : texto libre de la consulta
-        embeddings : np.ndarray (n_canciones, 768) — leído de MongoDB
-        df         : DataFrame de canciones (mismo orden que embeddings)
-        top_n      : número de resultados
-        col_*      : nombres de columnas en df
-
-        Returns
-        -------
-        Lista de dicts con claves: rank, title, artist, genre, score
         """
         if not self._lazy_load():
             return []

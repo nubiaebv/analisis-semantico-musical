@@ -17,12 +17,7 @@ BATCH_SIZE  = 16           # canciones por lote al generar embeddings
 
 class CargadorBETO:
     """
-    Singleton ligero para cargar tokenizer y modelo BETO una sola vez.
-
-    Uso
-    ---
-        beto = CargadorBETO()
-        tokenizer, model = beto.tokenizer, beto.model
+    Carga única de modelo/tokenizador BETO mediante patrón Singleton para ahorro de recursos.
     """
 
     def __init__(self, modelo: str = BETO_MODEL):
@@ -51,20 +46,7 @@ def embedding_cls(
     batch_size: int = BATCH_SIZE,
 ) -> np.ndarray:
     """
-    Genera embeddings usando el token [CLS] de la última capa de BETO.
-    Procesa en lotes para no saturar la memoria.
-
-    Parameters
-    ----------
-    textos      : lista de strings (letras de canciones)
-    tokenizer   : tokenizer de BETO
-    model       : modelo BETO en modo eval
-    max_length  : truncar a este número de tokens
-    batch_size  : tamaño del lote
-
-    Returns
-    -------
-    np.ndarray de forma (n_textos, 768)
+    Generación de embeddings (dim: 768) vía token [CLS] con gestión de memoria por lotes
     """
     todos_embeddings = []
 
@@ -100,13 +82,7 @@ def embedding_token(
     max_length: int = 256,
 ) -> Tuple[Optional[np.ndarray], List[str]]:
     """
-    Retorna el embedding contextual de una palabra específica dentro de un texto.
-    Útil para demostrar polisemia: la misma palabra obtiene vectores distintos
-    según el contexto que la rodea.
-
-    Returns
-    -------
-    (vector np.ndarray de 768d, lista de tokens de la oración)
+    Extracción de embeddings de 768d con resolución de polisemia mediante contexto dinámico de BETO
     """
     inputs = tokenizer(
         texto,
@@ -146,17 +122,7 @@ def analizar_polisemia(
     model,
 ) -> pd.DataFrame:
     """
-    Recibe una lista de (oración, palabra_objetivo) y demuestra cómo
-    BETO genera vectores distintos para la misma palabra en distintos contextos.
-
-    Parameters
-    ----------
-    pares : [(texto, palabra), ...]
-            Agrupar varios pares de la misma palabra para comparar.
-
-    Returns
-    -------
-    pd.DataFrame con columnas: oracion, palabra, similitud_con_anterior
+    Evaluación de polisemia mediante BETO: genera métricas de similitud entre vectores de una misma palabra en contextos variados
     """
     resultados = []
     emb_anterior = None
@@ -188,14 +154,7 @@ def analizar_polisemia(
 
 class BuscadorSemantico:
     """
-    Sistema de búsqueda semántica: dado un texto de consulta,
-    encuentra las canciones más similares usando embeddings BETO.
-
-    Uso
-    ---
-        buscador = BuscadorSemantico(df, tokenizer, model)
-        buscador.indexar()
-        resultados = buscador.buscar("feel the rhythm in my soul", top_k=5)
+    Búsqueda semántica por similitud de vectores de BETO (Indexación y Recuperación top_k)
     """
 
     def __init__(
@@ -229,11 +188,7 @@ class BuscadorSemantico:
         self, consulta: str, top_k: int = 5
     ) -> pd.DataFrame:
         """
-        Busca las canciones más similares a la consulta.
-
-        Returns
-        -------
-        pd.DataFrame con columnas: titulo, artista, genero, similitud
+       Búsqueda semántica top_k: retorna DataFrame de canciones ordenado por puntuación de similitud vectorial.
         """
         if self._index is None:
             raise RuntimeError("Llama indexar() antes de buscar().")
@@ -266,12 +221,6 @@ class AnalizadorMLM:
     """
     Usa la capacidad Masked Language Model de BETO para analizar
     cómo el modelo "completa" frases típicas de cada género musical.
-
-    Uso
-    ---
-        mlm = AnalizadorMLM()
-        mlm.predecir("Siento tu [MASK] en mi corazón", top_k=5)
-        mlm.analizar_por_genero(plantillas, df, col_genero="genero", col_letra="letra")
     """
 
     def __init__(self, modelo: str = BETO_MODEL):
@@ -285,10 +234,6 @@ class AnalizadorMLM:
         """
         Predice las palabras más probables para [MASK] en la oración.
 
-        Parameters
-        ----------
-        oracion_con_mask : oración con exactamente un token [MASK]
-        top_k            : número de predicciones a retornar
         """
         resultados = self._pipe(oracion_con_mask, top_k=top_k)
         print(f"\nOración: {oracion_con_mask}")
@@ -309,18 +254,6 @@ class AnalizadorMLM:
         Construye plantillas contextuales usando palabras frecuentes de cada género
         y analiza las predicciones de BETO para cada plantilla.
 
-        Parameters
-        ----------
-        plantillas : lista de frases con [MASK], ej:
-                     ["I [MASK] you every night",
-                      "feel the [MASK] in my heart"]
-        df         : DataFrame con las canciones
-        col_genero : columna del género
-        col_letra  : columna de la letra
-
-        Returns
-        -------
-        Dict { género → { plantilla → [predicciones BETO] } }
         """
         generos = df[col_genero].dropna().unique()
         resultado_total: Dict[str, Dict[str, List[Dict]]] = {}
@@ -354,11 +287,7 @@ class AnalizadorMLM:
     ) -> Dict[str, List[Tuple[str, int]]]:
         """
         Extrae las palabras más frecuentes de cada género (excluye stopwords
-        comunes). Útil para construir plantillas de MLM contextualizadas.
-
-        Returns
-        -------
-        Dict { género → [(palabra, frecuencia), ...] }
+        comunes).
         """
         import re
         from collections import Counter
